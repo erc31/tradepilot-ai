@@ -75,7 +75,7 @@ export default function PortfolioPage() {
 
   const totalValue = positions.reduce((sum, p) => sum + (p.current_price || p.buy_price) * p.shares, 0)
   const totalGainLoss = positions.reduce((sum, p) => {
-    const gain = ((p.current_price || p.buy_price) - p.buy_price) * p.shares * p.leverage
+    const gain = ((p.current_price || p.buy_price) - p.buy_price) * p.shares
     return sum + gain
   }, 0)
 
@@ -154,7 +154,7 @@ export default function PortfolioPage() {
                   {positions.map((p) => {
                     const current = p.current_price || p.buy_price
                     const variation = ((current - p.buy_price) / p.buy_price) * 100
-                    const gainLoss = (current - p.buy_price) * p.shares * p.leverage
+                    const gainLoss = (current - p.buy_price) * p.shares
                     const isPositive = variation >= 0
 
                     return (

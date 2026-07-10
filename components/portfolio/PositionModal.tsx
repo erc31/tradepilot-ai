@@ -121,13 +121,13 @@ export default function PositionModal({ position, onClose, onSave }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-secondary)' }}>Prix d'achat ($)</label>
-              <input type="number" step="0.0001" value={form.buy_price}
+              <input type="number" step="any" value={form.buy_price}
                 onChange={e => setForm(f => ({ ...f, buy_price: e.target.value }))} required
                 placeholder="0.00" className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
             <div>
               <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-secondary)' }}>Nombre d'actions</label>
-              <input type="number" step="0.0001" value={form.shares}
+              <input type="number" step="any" value={form.shares}
                 onChange={e => setForm(f => ({ ...f, shares: e.target.value }))} required
                 placeholder="0" className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
@@ -137,7 +137,7 @@ export default function PositionModal({ position, onClose, onSave }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-secondary)' }}>Levier (x)</label>
-              <input type="number" step="0.01" min="1" value={form.leverage}
+              <input type="number" step="any" min="1" value={form.leverage}
                 onChange={e => setForm(f => ({ ...f, leverage: e.target.value }))}
                 className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
@@ -153,13 +153,13 @@ export default function PositionModal({ position, onClose, onSave }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-secondary)' }}>Objectif ($)</label>
-              <input type="number" step="0.0001" value={form.target_price}
+              <input type="number" step="any" value={form.target_price}
                 onChange={e => setForm(f => ({ ...f, target_price: e.target.value }))}
                 placeholder="Optionnel" className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
             <div>
               <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-secondary)' }}>Stop Loss ($)</label>
-              <input type="number" step="0.0001" value={form.stop_loss}
+              <input type="number" step="any" value={form.stop_loss}
                 onChange={e => setForm(f => ({ ...f, stop_loss: e.target.value }))}
                 placeholder="Optionnel" className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
