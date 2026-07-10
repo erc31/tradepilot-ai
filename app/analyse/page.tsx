@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import AppLayout from '@/components/layout/AppLayout'
 import { Brain, Send, Loader2, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, ChevronRight } from 'lucide-react'
@@ -25,7 +25,7 @@ const QUICK_QUESTIONS = [
 
 interface Message { role: 'user' | 'ai'; content: string }
 
-export default function AnalysePage() {
+function AnalyseContent() {
   const searchParams = useSearchParams()
   const [ticker, setTicker] = useState(searchParams.get('ticker') || '')
   const [tickerInput, setTickerInput] = useState(searchParams.get('ticker') || '')
@@ -292,5 +292,13 @@ export default function AnalysePage() {
         )}
       </div>
     </AppLayout>
+  )
+}
+
+export default function AnalysePage() {
+  return (
+    <Suspense fallback={null}>
+      <AnalyseContent />
+    </Suspense>
   )
 }
