@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
 import {
-  LayoutDashboard, Briefcase, TrendingUp, Brain,
+  LayoutDashboard, Briefcase, Brain,
   Newspaper, Calendar, BookOpen, BarChart2,
-  MessageSquare, Bell, Settings, Zap
+  MessageSquare, Bell, Settings, Zap, LogOut
 } from 'lucide-react'
 
 const navItems = [
@@ -23,6 +24,13 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-60 flex flex-col z-40"
@@ -64,6 +72,18 @@ export default function Sidebar() {
           )
         })}
       </nav>
+
+      {/* Logout */}
+      <div className="px-3 py-4 border-t" style={{ borderColor: 'var(--border)' }}>
+        <button onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm transition-all"
+          style={{ color: 'var(--text-secondary)' }}
+          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(255,77,106,0.1)'}
+          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+          <LogOut size={16} />
+          Se déconnecter
+        </button>
+      </div>
     </aside>
   )
 }
