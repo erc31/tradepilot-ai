@@ -9,6 +9,35 @@ import { useRouter } from 'next/navigation'
 
 type PositionWithPrice = Position & { current_price: number }
 
+function getExchangeRegion(exchange: string): 'US' | 'EU' | 'UK' | 'unknown' {
+  const e = exchange.toUpperCase()
+  if (e.includes('NASDAQ') || e.includes('NYSE') || e.includes('NEW YORK') || e.includes('OTC')) return 'US'
+  if (e.includes('EURONEXT') || e.includes('XETRA') || e.includes('FRANKFURT') || e.includes('EPA')) return 'EU'
+  if (e.includes('LONDON') || e.includes('LSE')) return 'UK'
+  return 'unknown'
+}
+
+function isMarketOpen(exchange: string): boolean {
+  const region = getExchangeRegion(exchange)
+  const now = new Date()
+  if (region === 'US') {
+    const ny = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }))
+    const d = ny.getDay(); const m = ny.getHours() * 60 + ny.getMinutes()
+    return d >= 1 && d <= 5 && m >= 570 && m < 960
+  }
+  if (region === 'EU') {
+    const paris = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }))
+    const d = paris.getDay(); const m = paris.getHours() * 60 + paris.getMinutes()
+    return d >= 1 && d <= 5 && m >= 540 && m < 1050
+  }
+  if (region === 'UK') {
+    const london = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }))
+    const d = london.getDay(); const m = london.getHours() * 60 + london.getMinutes()
+    return d >= 1 && d <= 5 && m >= 480 && m < 990
+  }
+  return false
+}
+
 export default function PortfolioPage() {
   const router = useRouter()
   const [positions, setPositions] = useState<PositionWithPrice[]>([])
@@ -17,6 +46,7 @@ export default function PortfolioPage() {
   const [editPosition, setEditPosition] = useState<Position | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [exchanges, setExchanges] = useState<Record<string, string>>({})
 
   const fetchPositions = useCallback(async () => {
     const res = await fetch('/api/positions')
@@ -30,13 +60,16 @@ export default function PortfolioPage() {
     setRefreshing(true)
     const tickers = [...new Set(positions.map(p => p.ticker))]
     const priceMap: Record<string, number> = {}
+    const exchMap: Record<string, string> = {}
     await Promise.all(tickers.map(async (ticker) => {
       try {
         const res = await fetch(`/api/stocks/quote?symbol=${ticker}`)
-        const { quote } = await res.json()
+        const { quote, profile } = await res.json()
         if (quote?.c) priceMap[ticker] = quote.c
+        if (profile?.exchange) exchMap[ticker] = profile.exchange
       } catch {}
     }))
+    setExchanges(prev => ({ ...prev, ...exchMap }))
     setPositions(prev => prev.map(p => ({
       ...p,
       current_price: priceMap[p.ticker] || p.current_price,
@@ -192,7 +225,19 @@ export default function PortfolioPage() {
                               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                             </span>
                             <div>
-                              <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{ticker}</div>
+                              <div className="font-semibold flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
+                                {ticker}
+                                {exchanges[ticker] && (
+                                  <span
+                                    title={isMarketOpen(exchanges[ticker]) ? 'Marché ouvert' : 'Marché fermé'}
+                                    className="w-2 h-2 rounded-full flex-shrink-0 inline-block"
+                                    style={{
+                                      background: isMarketOpen(exchanges[ticker]) ? 'var(--green)' : 'var(--red)',
+                                      boxShadow: isMarketOpen(exchanges[ticker]) ? '0 0 5px var(--green)' : 'none',
+                                    }}
+                                  />
+                                )}
+                              </div>
                               <div className="text-xs truncate max-w-[120px]" style={{ color: 'var(--text-secondary)' }}>{lots[0].name}</div>
                             </div>
                           </div>
