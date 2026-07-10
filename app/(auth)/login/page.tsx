@@ -56,7 +56,8 @@ export default function LoginPage() {
               <div className="relative">
                 <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-secondary)' }} />
                 <input
-                  type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                  type="email" name="email" autoComplete="email"
+                  value={email} onChange={e => setEmail(e.target.value)} required
                   placeholder="vous@email.com"
                   className="w-full pl-9 pr-4 py-2.5 rounded-lg text-sm outline-none transition-all"
                   style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
@@ -69,7 +70,8 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-secondary)' }} />
                 <input
-                  type="password" value={password} onChange={e => setPassword(e.target.value)} required
+                  type="password" name="password" autoComplete="current-password"
+                  value={password} onChange={e => setPassword(e.target.value)} required
                   placeholder="••••••••"
                   className="w-full pl-9 pr-4 py-2.5 rounded-lg text-sm outline-none"
                   style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
