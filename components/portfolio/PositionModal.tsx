@@ -27,6 +27,7 @@ export default function PositionModal({ position, onClose, onSave }: Props) {
   })
   const [searching, setSearching] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   async function searchTicker() {
     if (!form.ticker) return
@@ -49,18 +50,23 @@ export default function PositionModal({ position, onClose, onSave }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    await onSave({
-      ticker: form.ticker.toUpperCase(),
-      name: form.name,
-      sector: form.sector,
-      buy_price: parseFloat(form.buy_price),
-      shares: parseFloat(form.shares),
-      leverage: parseFloat(form.leverage),
-      buy_date: form.buy_date,
-      target_price: form.target_price ? parseFloat(form.target_price) : undefined,
-      stop_loss: form.stop_loss ? parseFloat(form.stop_loss) : undefined,
-      alt_ticker: form.alt_ticker.trim() || undefined,
-    })
+    setError('')
+    try {
+      await onSave({
+        ticker: form.ticker.toUpperCase(),
+        name: form.name,
+        sector: form.sector,
+        buy_price: parseFloat(form.buy_price),
+        shares: parseFloat(form.shares),
+        leverage: parseFloat(form.leverage),
+        buy_date: form.buy_date,
+        target_price: form.target_price ? parseFloat(form.target_price) : undefined,
+        stop_loss: form.stop_loss ? parseFloat(form.stop_loss) : undefined,
+        alt_ticker: form.alt_ticker.trim() || undefined,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Échec de l\'enregistrement')
+    }
     setSaving(false)
   }
 
@@ -179,6 +185,10 @@ export default function PositionModal({ position, onClose, onSave }: Props) {
                 placeholder="Optionnel" className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
           </div>
+
+          {error && (
+            <p className="text-xs" style={{ color: 'var(--danger, #ef4444)' }}>{error}</p>
+          )}
 
           <button type="submit" disabled={saving}
             className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-60 mt-2"

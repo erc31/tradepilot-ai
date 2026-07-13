@@ -99,19 +99,23 @@ export default function PortfolioPage() {
   }, [positions.length])
 
   async function handleSave(data: Partial<Position>) {
-    if (editPosition) {
-      await fetch(`/api/positions/${editPosition.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-    } else {
-      await fetch('/api/positions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
+    const res = editPosition
+      ? await fetch(`/api/positions/${editPosition.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
+      : await fetch('/api/positions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
+
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Erreur inconnue' }))
+      throw new Error(error || 'Échec de l\'enregistrement')
     }
+
     setShowModal(false)
     setEditPosition(null)
     await fetchPositions()
