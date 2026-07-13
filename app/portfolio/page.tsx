@@ -7,7 +7,11 @@ import { Position } from '@/types'
 import { Plus, Brain, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-type PositionWithPrice = Position & { current_price: number }
+type PositionWithPrice = Position & { current_price: number; buy_price_usd?: number }
+
+function buyPriceUSD(p: PositionWithPrice) {
+  return p.buy_price_usd ?? p.buy_price
+}
 
 function getExchangeRegion(exchange: string): 'US' | 'EU' | 'UK' | 'unknown' {
   const e = exchange.toUpperCase()
@@ -61,6 +65,7 @@ export default function PortfolioPage() {
     setRefreshing(true)
     const tickers = [...new Set(positions.map(p => p.ticker))]
     const priceMap: Record<string, number> = {}
+    const fxMap: Record<string, number> = {}
     const exchMap: Record<string, string> = {}
     const openMap: Record<string, boolean | null> = {}
 
@@ -73,6 +78,10 @@ export default function PortfolioPage() {
           const res = await fetch(`/api/stocks/yahoo-quote?symbol=${altTicker}`)
           const data = await res.json()
           if (data.priceUSD) priceMap[ticker] = data.priceUSD
+          // buy_price is entered in the stock's native currency (e.g. EUR for
+          // Euronext tickers), same as priceLocal — apply the same FX rate to
+          // both so gain/loss isn't computed across mismatched currencies.
+          if (data.priceUSD && data.priceLocal) fxMap[ticker] = data.priceUSD / data.priceLocal
           if (data.exchange) exchMap[ticker] = data.exchange
           openMap[ticker] = data.isOpen ?? null
         } else {
@@ -89,6 +98,7 @@ export default function PortfolioPage() {
     setPositions(prev => prev.map(p => ({
       ...p,
       current_price: priceMap[p.ticker] || p.current_price,
+      buy_price_usd: fxMap[p.ticker] ? p.buy_price * fxMap[p.ticker] : p.buy_price_usd,
     })))
     setRefreshing(false)
   }, [positions])
@@ -144,8 +154,8 @@ export default function PortfolioPage() {
     return acc
   }, {} as Record<string, PositionWithPrice[]>)
 
-  const totalValue = positions.reduce((sum, p) => sum + (p.current_price || p.buy_price) * p.shares, 0)
-  const totalGainLoss = positions.reduce((sum, p) => sum + ((p.current_price || p.buy_price) - p.buy_price) * p.shares, 0)
+  const totalValue = positions.reduce((sum, p) => sum + (p.current_price || buyPriceUSD(p)) * p.shares, 0)
+  const totalGainLoss = positions.reduce((sum, p) => sum + ((p.current_price || buyPriceUSD(p)) - buyPriceUSD(p)) * p.shares, 0)
 
   const cardStyle = { background: 'var(--surface)', border: '1px solid var(--border)' }
 
@@ -222,10 +232,10 @@ export default function PortfolioPage() {
                 </thead>
                 <tbody>
                   {Object.entries(grouped).map(([ticker, lots]) => {
-                    const current = lots[0].current_price || lots[0].buy_price
+                    const current = lots[0].current_price || buyPriceUSD(lots[0])
                     const totalShares = lots.reduce((s, l) => s + l.shares, 0)
-                    const avgBuy = lots.reduce((s, l) => s + l.buy_price * l.shares, 0) / totalShares
-                    const totalGL = lots.reduce((s, l) => s + (current - l.buy_price) * l.shares, 0)
+                    const avgBuy = lots.reduce((s, l) => s + buyPriceUSD(l) * l.shares, 0) / totalShares
+                    const totalGL = lots.reduce((s, l) => s + (current - buyPriceUSD(l)) * l.shares, 0)
                     const variation = ((current - avgBuy) / avgBuy) * 100
                     const isPositive = totalGL >= 0
                     const isExpanded = expanded.has(ticker)
@@ -308,7 +318,7 @@ export default function PortfolioPage() {
 
                       // Lot rows (expanded)
                       ...(isExpanded ? lots.map((lot, i) => {
-                        const lotGL = (current - lot.buy_price) * lot.shares
+                        const lotGL = (current - buyPriceUSD(lot)) * lot.shares
                         const lotPositive = lotGL >= 0
                         return (
                           <tr key={lot.id}
@@ -322,7 +332,7 @@ export default function PortfolioPage() {
                               </div>
                             </td>
                             <td className="px-4 py-2.5 whitespace-nowrap text-xs" style={{ color: 'var(--text-primary)' }}>
-                              ${lot.buy_price.toFixed(4)}
+                              ${buyPriceUSD(lot).toFixed(4)}
                             </td>
                             <td className="px-4 py-2.5" />
                             <td className="px-4 py-2.5" />
