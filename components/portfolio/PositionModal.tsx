@@ -23,6 +23,7 @@ export default function PositionModal({ position, onClose, onSave }: Props) {
     buy_date: position?.buy_date || new Date().toISOString().split('T')[0],
     target_price: position?.target_price?.toString() || '',
     stop_loss: position?.stop_loss?.toString() || '',
+    alt_ticker: position?.alt_ticker || '',
   })
   const [searching, setSearching] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -58,6 +59,7 @@ export default function PositionModal({ position, onClose, onSave }: Props) {
       buy_date: form.buy_date,
       target_price: form.target_price ? parseFloat(form.target_price) : undefined,
       stop_loss: form.stop_loss ? parseFloat(form.stop_loss) : undefined,
+      alt_ticker: form.alt_ticker.trim() || undefined,
     })
     setSaving(false)
   }
@@ -147,6 +149,19 @@ export default function PositionModal({ position, onClose, onSave }: Props) {
                 onChange={e => setForm(f => ({ ...f, buy_date: e.target.value }))} required
                 className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
+          </div>
+
+          {/* Ticker alternatif (Yahoo Finance) pour actions EU */}
+          <div>
+            <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-secondary)' }}>
+              Ticker Yahoo Finance <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(optionnel — pour actions EU)</span>
+            </label>
+            <input value={form.alt_ticker} onChange={e => setForm(f => ({ ...f, alt_ticker: e.target.value }))}
+              placeholder="ex: NANO.PA, AIR.PA, SAP.DE"
+              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={inputStyle} />
+            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+              Remplis ce champ si l'action est sur Euronext/LSE pour avoir le bon cours et statut marché
+            </p>
           </div>
 
           {/* Objectif + Stop Loss */}

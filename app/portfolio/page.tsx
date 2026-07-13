@@ -47,6 +47,7 @@ export default function PortfolioPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [exchanges, setExchanges] = useState<Record<string, string>>({})
+  const [marketOpen, setMarketOpen] = useState<Record<string, boolean | null>>({})
 
   const fetchPositions = useCallback(async () => {
     const res = await fetch('/api/positions')
@@ -61,15 +62,30 @@ export default function PortfolioPage() {
     const tickers = [...new Set(positions.map(p => p.ticker))]
     const priceMap: Record<string, number> = {}
     const exchMap: Record<string, string> = {}
+    const openMap: Record<string, boolean | null> = {}
+
     await Promise.all(tickers.map(async (ticker) => {
       try {
-        const res = await fetch(`/api/stocks/quote?symbol=${ticker}`)
-        const { quote, profile } = await res.json()
-        if (quote?.c) priceMap[ticker] = quote.c
-        if (profile?.exchange) exchMap[ticker] = profile.exchange
+        const anyPos = positions.find(p => p.ticker === ticker)
+        const altTicker = anyPos?.alt_ticker
+
+        if (altTicker) {
+          const res = await fetch(`/api/stocks/yahoo-quote?symbol=${altTicker}`)
+          const data = await res.json()
+          if (data.priceUSD) priceMap[ticker] = data.priceUSD
+          if (data.exchange) exchMap[ticker] = data.exchange
+          openMap[ticker] = data.isOpen ?? null
+        } else {
+          const res = await fetch(`/api/stocks/quote?symbol=${ticker}`)
+          const { quote, profile } = await res.json()
+          if (quote?.c) priceMap[ticker] = quote.c
+          if (profile?.exchange) exchMap[ticker] = profile.exchange
+          openMap[ticker] = null
+        }
       } catch {}
     }))
     setExchanges(prev => ({ ...prev, ...exchMap }))
+    setMarketOpen(prev => ({ ...prev, ...openMap }))
     setPositions(prev => prev.map(p => ({
       ...p,
       current_price: priceMap[p.ticker] || p.current_price,
@@ -227,16 +243,21 @@ export default function PortfolioPage() {
                             <div>
                               <div className="font-semibold flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
                                 {ticker}
-                                {exchanges[ticker] && (
-                                  <span
-                                    title={isMarketOpen(exchanges[ticker]) ? 'Marché ouvert' : 'Marché fermé'}
-                                    className="w-2 h-2 rounded-full flex-shrink-0 inline-block"
-                                    style={{
-                                      background: isMarketOpen(exchanges[ticker]) ? 'var(--green)' : 'var(--red)',
-                                      boxShadow: isMarketOpen(exchanges[ticker]) ? '0 0 5px var(--green)' : 'none',
-                                    }}
-                                  />
-                                )}
+                                {(marketOpen[ticker] !== undefined || exchanges[ticker]) && (() => {
+                                  const open = marketOpen[ticker] !== null && marketOpen[ticker] !== undefined
+                                    ? marketOpen[ticker]!
+                                    : isMarketOpen(exchanges[ticker] || '')
+                                  return (
+                                    <span
+                                      title={open ? 'Marché ouvert' : 'Marché fermé'}
+                                      className="w-2 h-2 rounded-full flex-shrink-0 inline-block"
+                                      style={{
+                                        background: open ? 'var(--green)' : 'var(--red)',
+                                        boxShadow: open ? '0 0 5px var(--green)' : 'none',
+                                      }}
+                                    />
+                                  )
+                                })()}
                               </div>
                               <div className="text-xs truncate max-w-[120px]" style={{ color: 'var(--text-secondary)' }}>{lots[0].name}</div>
                             </div>

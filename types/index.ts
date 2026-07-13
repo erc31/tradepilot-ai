@@ -12,6 +12,7 @@ export interface Position {
   buy_date: string
   target_price?: number
   stop_loss?: number
+  alt_ticker?: string
   created_at: string
 }
 
