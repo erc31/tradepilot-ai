@@ -27,6 +27,7 @@ export default function JournalPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ ticker: '', type: 'buy' as 'buy' | 'sell', why: '', objective: '', risk: '', leverage: '', lesson: '' })
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   async function fetchEntries() {
     const res = await fetch('/api/journal')
@@ -39,11 +40,18 @@ export default function JournalPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    await fetch('/api/journal', {
+    setError('')
+    const res = await fetch('/api/journal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...form, leverage: form.leverage ? parseFloat(form.leverage) : null }),
     })
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Erreur inconnue' }))
+      setError(error || "Échec de l'enregistrement")
+      setSaving(false)
+      return
+    }
     setShowForm(false)
     setForm({ ticker: '', type: 'buy', why: '', objective: '', risk: '', leverage: '', lesson: '' })
     await fetchEntries()
@@ -52,13 +60,24 @@ export default function JournalPage() {
 
   async function handleDelete(id: string) {
     if (!confirm('Supprimer cette entrée ?')) return
-    await fetch('/api/journal', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    setError('')
+    const res = await fetch('/api/journal', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Erreur inconnue' }))
+      setError(error || 'Échec de la suppression')
+      return
+    }
     await fetchEntries()
   }
 
   return (
     <AppLayout>
       <div className="space-y-6">
+        {error && !showForm && (
+          <div className="rounded-lg px-4 py-3 text-sm" style={{ background: 'rgba(255,77,106,0.1)', border: '1px solid var(--red)', color: 'var(--red)' }}>
+            {error}
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--accent)' }}>
@@ -195,6 +214,9 @@ export default function JournalPage() {
                   <textarea value={form.lesson} onChange={e => setForm(f => ({ ...f, lesson: e.target.value }))} rows={3}
                     placeholder="Leçon tirée de ce trade..." className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none" style={inputStyle} />
                 </div>
+              )}
+              {error && (
+                <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>
               )}
               <button type="submit" disabled={saving}
                 className="w-full py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60"

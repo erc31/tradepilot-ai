@@ -16,6 +16,7 @@ export default function AlertesPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ ticker: '', type: 'price_above', value: '' })
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const inputStyle = { background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-primary)' }
 
@@ -30,11 +31,18 @@ export default function AlertesPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    await fetch('/api/alerts', {
+    setError('')
+    const res = await fetch('/api/alerts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...form, value: form.value ? parseFloat(form.value) : null }),
     })
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Erreur inconnue' }))
+      setError(error || "Échec de l'enregistrement")
+      setSaving(false)
+      return
+    }
     setShowForm(false)
     setForm({ ticker: '', type: 'price_above', value: '' })
     await fetchAlerts()
@@ -42,16 +50,28 @@ export default function AlertesPage() {
   }
 
   async function toggleAlert(id: string, is_active: boolean) {
-    await fetch(`/api/alerts/${id}`, {
+    setError('')
+    const res = await fetch(`/api/alerts/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: !is_active }),
     })
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Erreur inconnue' }))
+      setError(error || 'Échec de la mise à jour')
+      return
+    }
     await fetchAlerts()
   }
 
   async function deleteAlert(id: string) {
-    await fetch(`/api/alerts/${id}`, { method: 'DELETE' })
+    setError('')
+    const res = await fetch(`/api/alerts/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Erreur inconnue' }))
+      setError(error || 'Échec de la suppression')
+      return
+    }
     await fetchAlerts()
   }
 
@@ -60,6 +80,11 @@ export default function AlertesPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
+        {error && !showForm && (
+          <div className="rounded-lg px-4 py-3 text-sm" style={{ background: 'rgba(255,77,106,0.1)', border: '1px solid var(--red)', color: 'var(--red)' }}>
+            {error}
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--accent)' }}>
@@ -146,6 +171,9 @@ export default function AlertesPage() {
                   <input type="number" step="0.01" value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value }))} required
                     placeholder="0.00" className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={inputStyle} />
                 </div>
+              )}
+              {error && (
+                <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>
               )}
               <button type="submit" disabled={saving}
                 className="w-full py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60"

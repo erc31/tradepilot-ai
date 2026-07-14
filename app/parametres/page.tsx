@@ -16,6 +16,7 @@ export default function ParametresPage() {
   const [newRule, setNewRule] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
 
   const inputStyle = { background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-primary)' }
 
@@ -30,14 +31,17 @@ export default function ParametresPage() {
           max_positions: data.max_positions?.toString() || '',
           personal_rules: data.personal_rules || [],
         })
+      } else if (data?.error) {
+        setError(data.error)
       }
-    }).catch(() => {})
+    }).catch(() => setError('Impossible de charger les paramètres'))
   }, [])
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    await fetch('/api/settings', {
+    setError('')
+    const res = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -50,6 +54,11 @@ export default function ParametresPage() {
       }),
     })
     setSaving(false)
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Erreur inconnue' }))
+      setError(error || "Échec de l'enregistrement")
+      return
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -149,6 +158,9 @@ export default function ParametresPage() {
             )}
           </div>
 
+          {error && (
+            <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>
+          )}
           <button type="submit" disabled={saving}
             className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
             style={{ background: saved ? 'var(--green)' : 'var(--accent)' }}>
