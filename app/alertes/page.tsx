@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
-import { Bell, Plus, Trash2, X, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Bell, BellRing, Plus, Trash2, X, ToggleLeft, ToggleRight, Check } from 'lucide-react'
 
 const ALERT_TYPES = [
   { key: 'price_above', label: 'Prix au-dessus de' },
@@ -64,6 +64,21 @@ export default function AlertesPage() {
     await fetchAlerts()
   }
 
+  async function dismissAlert(id: string) {
+    setError('')
+    const res = await fetch(`/api/alerts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ triggered_at: null, triggered_message: null }),
+    })
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Erreur inconnue' }))
+      setError(error || "Échec de l'acquittement")
+      return
+    }
+    await fetchAlerts()
+  }
+
   async function deleteAlert(id: string) {
     setError('')
     const res = await fetch(`/api/alerts/${id}`, { method: 'DELETE' })
@@ -110,25 +125,43 @@ export default function AlertesPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {alerts.map(alert => (
+            {[...alerts].sort((a, b) => (b.triggered_at ? 1 : 0) - (a.triggered_at ? 1 : 0)).map(alert => (
               <div key={alert.id} className="rounded-xl px-5 py-4 flex items-center justify-between"
-                style={{ background: 'var(--surface)', border: `1px solid ${alert.is_active ? 'var(--border)' : 'var(--border)'}`, opacity: alert.is_active ? 1 : 0.5 }}>
+                style={{
+                  background: alert.triggered_at ? 'rgba(245,166,35,0.08)' : 'var(--surface)',
+                  border: `1px solid ${alert.triggered_at ? 'var(--yellow)' : 'var(--border)'}`,
+                  opacity: alert.is_active ? 1 : 0.5,
+                }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ background: alert.is_active ? 'rgba(108,99,255,0.15)' : 'var(--surface-2)' }}>
-                    <Bell size={14} style={{ color: alert.is_active ? 'var(--accent)' : 'var(--text-secondary)' }} />
+                    style={{ background: alert.triggered_at ? 'rgba(245,166,35,0.15)' : alert.is_active ? 'rgba(108,99,255,0.15)' : 'var(--surface-2)' }}>
+                    {alert.triggered_at
+                      ? <BellRing size={14} style={{ color: 'var(--yellow)' }} />
+                      : <Bell size={14} style={{ color: alert.is_active ? 'var(--accent)' : 'var(--text-secondary)' }} />}
                   </div>
                   <div>
                     <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                       {alert.ticker} — {ALERT_TYPES.find(t => t.key === alert.type)?.label}
                       {alert.value && <span style={{ color: 'var(--accent)' }}> ${alert.value}</span>}
                     </div>
-                    <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      Créée le {new Date(alert.created_at).toLocaleDateString('fr-FR')}
-                    </div>
+                    {alert.triggered_at ? (
+                      <div className="text-xs font-medium" style={{ color: 'var(--yellow)' }}>
+                        {alert.triggered_message || 'Condition atteinte'} · {new Date(alert.triggered_at).toLocaleDateString('fr-FR')}
+                      </div>
+                    ) : (
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        Créée le {new Date(alert.created_at).toLocaleDateString('fr-FR')}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {alert.triggered_at && (
+                    <button onClick={() => dismissAlert(alert.id)} title="Marquer comme vu"
+                      className="p-1.5 rounded-lg hover:opacity-70" style={{ background: 'rgba(245,166,35,0.15)', color: 'var(--yellow)' }}>
+                      <Check size={14} />
+                    </button>
+                  )}
                   <button onClick={() => toggleAlert(alert.id, alert.is_active)} className="hover:opacity-70">
                     {alert.is_active
                       ? <ToggleRight size={22} style={{ color: 'var(--accent)' }} />

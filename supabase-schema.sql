@@ -61,6 +61,8 @@ create table alerts (
   type text check (type in ('price_above', 'price_below', 'earnings', 'news', 'unusual_move')) not null,
   value numeric(12,4),
   is_active boolean default true,
+  triggered_at timestamptz,
+  triggered_message text,
   created_at timestamptz default now()
 );
 

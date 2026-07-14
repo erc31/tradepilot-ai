@@ -53,6 +53,8 @@ export interface Alert {
   type: 'price_above' | 'price_below' | 'earnings' | 'news' | 'unusual_move'
   value?: number
   is_active: boolean
+  triggered_at?: string
+  triggered_message?: string
   created_at: string
 }
 
