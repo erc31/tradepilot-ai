@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { anthropic, SYSTEM_PROMPT } from '@/lib/anthropic'
+import { getYahooQuoteUSD } from '@/lib/yahoo'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 export async function POST(request: NextRequest) {
@@ -15,9 +16,20 @@ export async function POST(request: NextRequest) {
     supabase.from('user_settings').select('*').eq('user_id', user.id).single(),
   ])
 
+  // EU positions store buy_price in their native currency (e.g. EUR) — convert
+  // to USD so the AI doesn't read a mislabeled "$" figure as a USD price.
+  const altTickers = [...new Set((positions || []).map(p => p.alt_ticker).filter(Boolean))]
+  const fxRates: Record<string, number> = {}
+  await Promise.all(altTickers.map(async (alt) => {
+    const q = await getYahooQuoteUSD(alt).catch(() => null)
+    if (q) fxRates[alt] = q.fxRate
+  }))
+  const buyPriceUSD = (p: { alt_ticker?: string; buy_price: number }) =>
+    p.alt_ticker && fxRates[p.alt_ticker] ? p.buy_price * fxRates[p.alt_ticker] : p.buy_price
+
   const context = `
 PORTEFEUILLE ACTUEL:
-${positions?.map(p => `- ${p.ticker} (${p.name}): ${p.shares} actions achetées à $${p.buy_price}, levier x${p.leverage}, secteur: ${p.sector}`).join('\n') || 'Aucune position'}
+${positions?.map(p => `- ${p.ticker} (${p.name}): ${p.shares} actions achetées à $${buyPriceUSD(p).toFixed(2)}, levier x${p.leverage}, secteur: ${p.sector}`).join('\n') || 'Aucune position'}
 
 HISTORIQUE TRADES (20 derniers):
 ${trades?.map(t => `- ${t.ticker}: achat $${t.buy_price} → vente $${t.sell_price}, P&L: ${t.gain_loss?.toFixed(2)}$`).join('\n') || 'Aucun trade clôturé'}
