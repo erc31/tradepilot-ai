@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import PositionModal from '@/components/portfolio/PositionModal'
+import SellModal from '@/components/portfolio/SellModal'
 import { Position } from '@/types'
-import { Plus, Brain, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Brain, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, ChevronDown, ChevronRight, CircleDollarSign } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 type PositionWithPrice = Position & { current_price: number; buy_price_usd?: number }
@@ -50,6 +51,7 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editPosition, setEditPosition] = useState<Position | null>(null)
+  const [sellPosition, setSellPosition] = useState<PositionWithPrice | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [exchanges, setExchanges] = useState<Record<string, string>>({})
@@ -137,6 +139,32 @@ export default function PortfolioPage() {
   async function handleDelete(id: string) {
     if (!confirm('Supprimer ce lot ?')) return
     await fetch(`/api/positions/${id}`, { method: 'DELETE' })
+    await fetchPositions()
+  }
+
+  async function handleSell(sellPriceUSD: number, sellDate: string) {
+    if (!sellPosition) return
+    const res = await fetch('/api/trades', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ticker: sellPosition.ticker,
+        name: sellPosition.name,
+        sector: sellPosition.sector,
+        buy_price: buyPriceUSD(sellPosition),
+        sell_price: sellPriceUSD,
+        shares: sellPosition.shares,
+        leverage: sellPosition.leverage,
+        buy_date: sellPosition.buy_date,
+        sell_date: sellDate,
+      }),
+    })
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Erreur inconnue' }))
+      throw new Error(error || 'Échec de la clôture')
+    }
+    await fetch(`/api/positions/${sellPosition.id}`, { method: 'DELETE' })
+    setSellPosition(null)
     await fetchPositions()
   }
 
@@ -356,6 +384,12 @@ export default function PortfolioPage() {
                             </td>
                             <td className="px-4 py-2.5">
                               <div className="flex items-center gap-1.5">
+                                <button onClick={() => setSellPosition(lot)}
+                                  title="Vendre / Clôturer"
+                                  className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
+                                  style={{ background: 'rgba(0,200,150,0.1)', color: 'var(--green)' }}>
+                                  <CircleDollarSign size={12} />
+                                </button>
                                 <button onClick={() => { setEditPosition(lot); setShowModal(true) }}
                                   title="Modifier"
                                   className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
@@ -387,6 +421,14 @@ export default function PortfolioPage() {
           position={editPosition}
           onClose={() => { setShowModal(false); setEditPosition(null) }}
           onSave={handleSave}
+        />
+      )}
+
+      {sellPosition && (
+        <SellModal
+          position={sellPosition}
+          onClose={() => setSellPosition(null)}
+          onConfirm={handleSell}
         />
       )}
     </AppLayout>
