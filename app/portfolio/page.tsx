@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout'
 import PositionModal from '@/components/portfolio/PositionModal'
 import SellModal from '@/components/portfolio/SellModal'
 import { Position } from '@/types'
-import { Plus, Brain, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, ChevronDown, ChevronRight, CircleDollarSign } from 'lucide-react'
+import { Plus, Brain, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, ChevronDown, ChevronRight, CircleDollarSign, LineChart } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 type PositionWithPrice = Position & { current_price: number; buy_price_usd?: number }
@@ -337,12 +337,24 @@ export default function PortfolioPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <button onClick={e => { e.stopPropagation(); router.push(`/analyse?ticker=${ticker}`) }}
-                            title="Analyse IA"
-                            className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
-                            style={{ background: 'rgba(108,99,255,0.15)', color: 'var(--accent)' }}>
-                            <Brain size={13} />
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={e => {
+                              e.stopPropagation()
+                              const alt = lots[0].alt_ticker
+                              router.push(`/stock/${ticker}${alt ? `?alt=${alt}` : ''}`)
+                            }}
+                              title="Fiche complète"
+                              className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
+                              style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}>
+                              <LineChart size={13} />
+                            </button>
+                            <button onClick={e => { e.stopPropagation(); router.push(`/analyse?ticker=${ticker}`) }}
+                              title="Analyse IA"
+                              className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
+                              style={{ background: 'rgba(108,99,255,0.15)', color: 'var(--accent)' }}>
+                              <Brain size={13} />
+                            </button>
+                          </div>
                         </td>
                       </tr>,
 

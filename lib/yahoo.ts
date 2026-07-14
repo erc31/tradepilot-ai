@@ -1,12 +1,32 @@
 const YAHOO_HEADERS = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
 
-async function getYahooChartMeta(symbol: string) {
+async function getYahooChartResult(symbol: string, range = '1d', interval = '1m') {
   const res = await fetch(
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`,
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`,
     { headers: YAHOO_HEADERS }
   )
   const json = await res.json()
-  return json.chart?.result?.[0]?.meta
+  return json.chart?.result?.[0]
+}
+
+async function getYahooChartMeta(symbol: string) {
+  const result = await getYahooChartResult(symbol)
+  return result?.meta
+}
+
+export interface YahooChartPoint {
+  time: number // unix seconds
+  value: number
+}
+
+export async function getYahooChartSeries(symbol: string, range = '6mo', interval = '1d'): Promise<YahooChartPoint[]> {
+  const result = await getYahooChartResult(symbol, range, interval)
+  const timestamps: number[] | undefined = result?.timestamp
+  const closes: (number | null)[] | undefined = result?.indicators?.quote?.[0]?.close
+  if (!timestamps || !closes) return []
+  return timestamps
+    .map((t, i) => ({ time: t, value: closes[i] }))
+    .filter((p): p is YahooChartPoint => typeof p.value === 'number')
 }
 
 export interface YahooQuoteUSD {

@@ -38,3 +38,7 @@ export async function getRecommendations(symbol: string) {
 export async function getEarningsCalendar(from: string, to: string) {
   return finnhubFetch('/calendar/earnings', { from, to })
 }
+
+export async function getPeers(symbol: string) {
+  return finnhubFetch('/stock/peers', { symbol })
+}
