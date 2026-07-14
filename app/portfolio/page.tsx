@@ -25,9 +25,11 @@ function isMarketOpen(exchange: string): boolean {
   const region = getExchangeRegion(exchange)
   const now = new Date()
   if (region === 'US') {
+    // eToro trades most US stocks ~24/5 (extended hours), not just the
+    // 9:30-16:00 ET regular session, so "open" here means "any weekday".
     const ny = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }))
-    const d = ny.getDay(); const m = ny.getHours() * 60 + ny.getMinutes()
-    return d >= 1 && d <= 5 && m >= 570 && m < 960
+    const d = ny.getDay()
+    return d >= 1 && d <= 5
   }
   if (region === 'EU') {
     const paris = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }))
