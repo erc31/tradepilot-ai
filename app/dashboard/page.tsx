@@ -6,7 +6,11 @@ import { TrendingUp, TrendingDown, DollarSign, Briefcase, Activity, Brain } from
 import { useRouter } from 'next/navigation'
 import { Position } from '@/types'
 
-type PositionWithPrice = Position & { current_price: number }
+type PositionWithPrice = Position & { current_price: number; buy_price_usd?: number }
+
+function buyPriceUSD(p: PositionWithPrice) {
+  return p.buy_price_usd ?? p.buy_price
+}
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -20,6 +24,37 @@ export default function DashboardPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    if (positions.length === 0) return
+    const tickers = [...new Set(positions.map(p => p.ticker))]
+    const priceMap: Record<string, number> = {}
+    const fxMap: Record<string, number> = {}
+
+    Promise.all(tickers.map(async (ticker) => {
+      try {
+        const anyPos = positions.find(p => p.ticker === ticker)
+        const altTicker = anyPos?.alt_ticker
+
+        if (altTicker) {
+          const res = await fetch(`/api/stocks/yahoo-quote?symbol=${altTicker}`)
+          const data = await res.json()
+          if (data.priceUSD) priceMap[ticker] = data.priceUSD
+          if (data.priceUSD && data.priceLocal) fxMap[ticker] = data.priceUSD / data.priceLocal
+        } else {
+          const res = await fetch(`/api/stocks/quote?symbol=${ticker}`)
+          const { quote } = await res.json()
+          if (quote?.c) priceMap[ticker] = quote.c
+        }
+      } catch {}
+    })).then(() => {
+      setPositions(prev => prev.map(p => ({
+        ...p,
+        current_price: priceMap[p.ticker] || p.current_price,
+        buy_price_usd: fxMap[p.ticker] ? p.buy_price * fxMap[p.ticker] : p.buy_price_usd,
+      })))
+    })
+  }, [positions.length])
+
   // Group by ticker
   const grouped = positions.reduce((acc, p) => {
     if (!acc[p.ticker]) acc[p.ticker] = []
@@ -27,8 +62,8 @@ export default function DashboardPage() {
     return acc
   }, {} as Record<string, PositionWithPrice[]>)
 
-  const totalValue = positions.reduce((s, p) => s + (p.current_price || p.buy_price) * p.shares, 0)
-  const totalCost = positions.reduce((s, p) => s + p.buy_price * p.shares, 0)
+  const totalValue = positions.reduce((s, p) => s + (p.current_price || buyPriceUSD(p)) * p.shares, 0)
+  const totalCost = positions.reduce((s, p) => s + buyPriceUSD(p) * p.shares, 0)
   const totalGL = totalValue - totalCost
   const totalGLPct = totalCost > 0 ? (totalGL / totalCost) * 100 : 0
   const nbPositions = Object.keys(grouped).length
@@ -99,10 +134,10 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {Object.entries(grouped).map(([ticker, lots]) => {
-                  const current = lots[0].current_price || lots[0].buy_price
+                  const current = lots[0].current_price || buyPriceUSD(lots[0])
                   const totalShares = lots.reduce((s, l) => s + l.shares, 0)
-                  const avgBuy = lots.reduce((s, l) => s + l.buy_price * l.shares, 0) / totalShares
-                  const gl = lots.reduce((s, l) => s + (current - l.buy_price) * l.shares, 0)
+                  const avgBuy = lots.reduce((s, l) => s + buyPriceUSD(l) * l.shares, 0) / totalShares
+                  const gl = lots.reduce((s, l) => s + (current - buyPriceUSD(l)) * l.shares, 0)
                   const pct = ((current - avgBuy) / avgBuy) * 100
                   const pos = gl >= 0
                   return (
