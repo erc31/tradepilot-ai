@@ -17,6 +17,7 @@ export interface YahooQuoteUSD {
   isOpen: boolean
   exchange: string
   name: string
+  dayChangePercent: number | null
 }
 
 export async function getYahooQuoteUSD(symbol: string): Promise<YahooQuoteUSD | null> {
@@ -38,6 +39,9 @@ export async function getYahooQuoteUSD(symbol: string): Promise<YahooQuoteUSD | 
   const regular = meta.currentTradingPeriod?.regular
   const isOpen = !!regular && nowSec >= regular.start && nowSec < regular.end
 
+  const prevClose: number | undefined = meta.previousClose || meta.chartPreviousClose
+  const dayChangePercent = prevClose ? ((priceLocal - prevClose) / prevClose) * 100 : null
+
   return {
     priceLocal,
     priceUSD,
@@ -46,5 +50,6 @@ export async function getYahooQuoteUSD(symbol: string): Promise<YahooQuoteUSD | 
     isOpen,
     exchange: meta.fullExchangeName || '',
     name: meta.longName || meta.shortName || '',
+    dayChangePercent,
   }
 }
